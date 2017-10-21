@@ -1,2 +1,14 @@
 @import 'bootstrap-sprockets';
 @import 'bootstrap';
+
+body {
+  font-family: 'Exo 2', sans-serif;
+}
+
+#debug-output {
+  max-height: 224px;
+}
+
+#caption-result {
+  font-size: 200%;
+}

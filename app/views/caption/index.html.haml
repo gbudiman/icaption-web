@@ -1,0 +1,17 @@
+%div{class: 'col-xs-12'}
+  %form{method: 'POST', id: 'uploader-form', enctype: 'multipart/form-data'}
+    %label{class: 'btn btn-primary btn-file'}
+      Upload Image
+      %input{type: 'file', style: 'display:none', id: 'btn-image-upload'}
+
+%hr
+%div{class: 'col-xs-12'}
+  %pre{id: 'debug-output', style: 'display:none'}
+%hr
+%div{class: 'col-xs-6 text-center'}
+  %img{id: 'upload-preview'}
+%div{class: 'col-xs-6'}
+  %div{id: 'caption-result'}
+
+:javascript
+  uploader.attach()
