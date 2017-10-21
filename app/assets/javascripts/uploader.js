@@ -10,6 +10,7 @@ var uploader = function() {
     debug = $('#debug-output');
     preview = $('#upload-preview');
     caption_result = $('#caption-result');
+    upload_progress_bar = $('#upload-progress-bar');
 
     resize_previewer();
   }
@@ -42,7 +43,7 @@ var uploader = function() {
     }
 
     reader.readAsDataURL(button[0].files[0]);
-    caption_result.text('Waiting for result...')
+    
   }
 
   var ping_for_result = function(work_id) {
@@ -102,6 +103,8 @@ var uploader = function() {
 
       write_debug('Selected file: ' + input_file.name + ' (' + size + ')');
       write_debug('Transmitting file...');
+      caption_result.text('Uploading file...')
+      upload_progress_bar.parent().show();
 
       $.ajax({
         url: '/receiver',
@@ -110,22 +113,27 @@ var uploader = function() {
         cache: false,
         contentType: false,
         processData: false,
-        // xhr: function() {
-        //   var my_xhr = $.ajaxSettings.xhr();
-        //   if (my_xhr.upload) {
-        //     myXhr.upload.addEventListener('progress', function(e) {
-        //       if (e.lengthComputable) {
-        //         console.log(e.loaded + '/' + e.total);
-        //       }
-        //     }, false);
-        //   }
+        xhr: function() {
+          var my_xhr = new window.XMLHttpRequest()
+          my_xhr.upload.addEventListener('progress', function(e) {
+            if (e.lengthComputable) {
+              var l = parseFloat(e.loaded) / parseFloat(e.total) * 100;
+              upload_progress_bar.css('width', l + '%');
+            }
+          }, false);
 
-        //   return my_xhr;
-        // }
+          return my_xhr;
+        }
       }).done(function(res) {
         if (res != null && res.success) {
           write_debug('File received.')
           write_debug('Job ID: ' + res.work_id);
+          caption_result.text('Waiting for result...')
+          upload_progress_bar.parent().animate({
+            opacity: 0
+          }, 1000, function() {
+            upload_progress_bar.parent().hide().css('opacity', 1);
+          });
           resolve(res.work_id);
         } else {
           write_debug('Server error :(');
