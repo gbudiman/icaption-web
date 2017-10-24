@@ -4,7 +4,7 @@ class CaptionController < ApplicationController
 
   def receiver
     payload = request[:file]
-    filename = request[:filename]
+    filename = request[:filename].gsub(/[^0-9A-Za-z.\-]/, '_').gsub(/jpeg/, 'jpg') #.gsub(/\s/, '')
     topic_id = request[:topic_id].to_i
 
     randomizer = Caption.generate_work_id
@@ -19,6 +19,7 @@ class CaptionController < ApplicationController
     py_script = '/home/gbudiman/Documents/icaption/im2txt/topic_caption_scripts/generate_caption_integrated.sh'
     sh_cmd = "sh #{py_script} #{rel_path} #{topic_id} &"
 
+    ap sh_cmd
     system sh_cmd
 
     render json: {
