@@ -7,6 +7,9 @@ var uploader = function() {
   var queue;
   var caption_wait;
   var caption_result;
+  var topic_selector;
+  var job_dictionary;
+  var file_counter;
 
   var _load = function() {
     button = $('#btn-image-upload');
@@ -18,20 +21,61 @@ var uploader = function() {
     //caption_result = $('#caption-result');
     upload_progress_bar = $('#upload-progress-bar');
     result_pane = $('#result-pane');
+    file_dropper = $('#file-dropper');
+    topic_selector = $('#topic-selector');
     queue = 0;
+    file_counter = 0;
+    job_dictionary = {};
+
+    file_dropper.fileinput({
+      uploadUrl: '/receiver',
+      uploadExtraData: function() {
+        return {
+          topic_id: topic_selector.selectpicker('val')
+        }
+      },
+      allowedFileTypes: ['image'],
+      showUpload: false,
+      showBrowse: false,
+      showRemove: true,
+      showCaption: true
+    }).on('filebatchselected', function(event, files) {
+      file_dropper.fileinput('upload')
+    }).on('fileuploaded', function(event, data, previewId, index) {
+      job_dictionary[data.response.work_id] = {
+        tries: 0,
+        completed: false,
+        file_id: file_counter
+      };
+
+      $('#' + file_dropper.fileinput('getFrames')[file_counter].id)
+        .attr('retrieve-id', previewId)
+        .find('.progress-bar')
+          .addClass('progress-bar-striped active')
+          .text('Waiting for response...');
+      file_counter++;
+      
+    }).on('filebatchuploadcomplete', function(event, files, extra) {
+      ping_for_result();
+    }).on('filecleared', function(event) {
+      file_counter = 0;
+      job_dictionary = {};
+    }).on('filesuccessremove', function(event, id) {
+      file_counter--;
+    })
   }
 
   var attach = function() {
     _load();
-    button.on('change', function() {
-      debug.show();
-      debug.empty();
+    // button.on('change', function() {
+    //   debug.show();
+    //   debug.empty();
       
-      update_previewer(queue);
-      send_to_server().then(function(work_id) {
-        ping_for_result(work_id);
-      });
-    })
+    //   update_previewer(queue);
+    //   send_to_server().then(function(work_id) {
+    //     ping_for_result(work_id);
+    //   });
+    // })
   }
 
   var toggle_readiness = function(x) {
@@ -81,49 +125,122 @@ var uploader = function() {
     
   }
 
-  var ping_for_result = function(work_id) {
+  var ping_for_result = function() {
     var p_pattern = new RegExp(/\(p\=.+/);
-    var interval = 2000;
+    var interval = 2500;
     var intobj;
     var max_tries = 10;
     var tries = 0;
 
-    write_debug('Ping server at interval ' + interval + 'ms, MAX_TRIES = ' + max_tries);
+    //write_debug('Ping server at interval ' + interval + 'ms, MAX_TRIES = ' + max_tries);
+
+    var _check_all_complete = function() {
+      var all_complete = true;
+
+      $.each(job_dictionary, function(job_id, d) {
+        all_complete = all_complete && d.completed;
+
+        if (!all_complete) return false;
+      })
+
+      return all_complete;
+    }
+
+    var check_all_complete = function() {
+      if (_check_all_complete()) {
+        clearInterval(intobj);
+        job_dictionary = {};
+      }
+    }
+
     var _ping = function() {
-      $.ajax({
-        url: '/ping_result',
-        type: 'GET',
-        data: {
-          work_id: work_id
-        },
-      }).done(function(res) {
-        tries++;
+      $.each(job_dictionary, function(job_id, d) {
+        if (d.completed) return true;
 
-        if (tries == max_tries) {
-          clearInterval(intobj);
-          write_debug('Giving up :(');
-          upload_progress_bar.text('Gave up :(');
-        }
+        var frame_inf = file_dropper.fileinput('getFrames')[d.file_id];
 
-        if (res.status == 'pending') {
-          write_debug('Result not ready yet...')
-        } else if (res.status == 'completed') {
-          //write_debug(res.result);
-          write_debug('Captioning completed!');
-          caption_wait.hide();
-          caption_result.show().html(res.result.split('\n')[0].replace(p_pattern, ''));
-          clearInterval(intobj);
-          upload_progress_bar.text('Captioning completed!');
-          upload_progress_bar.parent().animate({
-            opacity: 0
-          }, 1000, function() {
-            upload_progress_bar.parent().hide().css('opacity', 1);
-            upload_progress_bar.css('width', '0%');
-          });
-          toggle_readiness(true);
+        if (frame_inf == undefined) {
+          d.completed = true;
+          return true;
         }
+        var mydom = $('#' + frame_inf.id);
+
+        $.ajax({
+          url: '/ping_result',
+          type: 'GET',
+          data: {
+            work_id: job_id
+          }
+        }).done(function(res) {
+          d.tries++;
+
+          if (d.tries > max_tries) {
+            mydom.find('.progress-bar')
+              .text('Gave up :(')
+              .removeClass('active progress-bar-striped')
+              .removeClass('bg-success progress-bar-success')
+              .addClass('bg-danger progress-bar-danger');
+          }
+
+          //console.log('Attempt #' + d.tries);
+          if (res.status == 'pending') {
+            mydom.find('.progress-bar')
+              .text('Ping attempt #' + d.tries + '...')
+              .addClass('active');
+          } else if (res.status == 'completed') {
+
+            d.completed = true;
+            var width = mydom.width();
+
+            mydom.find('.progress-bar').removeClass('active progress-bar-striped').text('Captioned!');
+            if (mydom.find('.caption-result').length == 0) {
+              mydom.find('.file-thumb-progress').after(
+
+                '<div class="caption-result" style="width:' + width + 'px">'
+              +   res.result.split('\n')[0].replace(p_pattern, '')
+              + '</div>');
+            }
+          }
+
+          check_all_complete();
+        })
       })
     }
+    // var _ping = function() {
+    //   $.ajax({
+    //     url: '/ping_result',
+    //     type: 'GET',
+    //     data: {
+    //       work_id: work_id
+    //     },
+    //   }).done(function(res) {
+    //     tries++;
+
+    //     if (tries == max_tries) {
+    //       clearInterval(intobj);
+    //       write_debug('Giving up :(');
+    //       upload_progress_bar.text('Gave up :(');
+    //     }
+
+    //     if (res.status == 'pending') {
+    //       write_debug('Result not ready yet...')
+    //     } else if (res.status == 'completed') {
+    //       //write_debug(res.result);
+    //       write_debug('Captioning completed!');
+    //       caption_wait.hide();
+    //       caption_result.show().html(res.result.split('\n')[0].replace(p_pattern, ''));
+    //       clearInterval(intobj);
+    //       upload_progress_bar.text('Captioning completed!');
+    //       upload_progress_bar.parent().animate({
+    //         opacity: 0
+    //       }, 1000, function() {
+    //         upload_progress_bar.parent().hide().css('opacity', 1);
+    //         upload_progress_bar.css('width', '0%');
+    //       });
+    //       toggle_readiness(true);
+    //     }
+    //   })
+    // }
 
     intobj = setInterval(_ping, interval);
   }

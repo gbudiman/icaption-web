@@ -1,17 +1,20 @@
-%div{class: 'col-xs-4'}
-  %div{class: 'row', style: 'margin-bottom: 8px'}
-    %select{class: 'col-xs-12', id: 'topic-selector'}
-      %option{value: 2} Baseball
-      %option{value: 7} Bathroom & Toilet
-      %option{value: 16, disabled: true} Grassfields & Cows
-      %option{value: 29} Snow & Ski
-      %option{value: 30} Kitchens
-      %option{value: 34} Skateboards & Surfboards
-      %option{value: 43} Train & Railroads
-  %form{method: 'POST', id: 'uploader-form', enctype: 'multipart/form-data'}
-    %label{class: 'btn btn-primary btn-file btn-block'}
-      Upload Image
-      %input{type: 'file', style: 'display:none', id: 'btn-image-upload'}
+
+%div{class: 'row', style: 'margin-bottom: 8px'}
+  %select{class: 'col-xs-12 col-sm-6 col-md-4', id: 'topic-selector'}
+    %option{value: 2} Baseball
+    %option{value: 7} Bathroom & Toilet
+    %option{value: 16, disabled: true} Grassfields & Cows
+    %option{value: 29} Snow & Ski
+    %option{value: 30} Kitchens
+    %option{value: 34} Skateboards & Surfboards
+    %option{value: 43} Train & Railroads
+%div{class: 'row'}
+  %div{class: 'file-loader col-xs-12'}
+    %input{id: 'file-dropper', type: 'file', multiple: 'true'}
+  / %form{method: 'POST', id: 'uploader-form', enctype: 'multipart/form-data'}
+  /   %label{class: 'btn btn-primary btn-file btn-block'}
+  /     Upload Image
+  /     %input{type: 'file', style: 'display:none', id: 'btn-image-upload'}
 
   %button{type: 'button', class: 'btn btn-block btn-primary', disabled: true, id: 'btn-placebo-disabled', style: 'display:none'} Uploading...
 %div{class: 'col-xs-8'}
@@ -32,7 +35,9 @@
 /   %div{id: 'caption-result'}
 
 = javascript_include_tag 'bootstrap-select.min'
+= javascript_include_tag 'fileinput.min'
 = stylesheet_link_tag 'bootstrap-select.min'
+= stylesheet_link_tag 'fileinput.min'
 :javascript
   uploader.attach();
   $('#topic-selector').selectpicker();

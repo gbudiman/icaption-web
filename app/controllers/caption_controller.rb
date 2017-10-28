@@ -3,9 +3,12 @@ class CaptionController < ApplicationController
   end
 
   def receiver
-    payload = request[:file]
-    filename = request[:filename].gsub(/[^0-9A-Za-z.\-]/, '_').gsub(/jpeg/, 'jpg') #.gsub(/\s/, '')
+    payload = request[:file_data]
+    original_filename = request[:file_data].original_filename
+    filename = original_filename.gsub(/[^0-9A-Za-z.\-]/, '_').gsub(/jpeg/, 'jpg') #.gsub(/\s/, '')
     topic_id = request[:topic_id].to_i
+
+    ap topic_id
 
     randomizer = Caption.generate_work_id
     target_filepath = "#{randomizer}_#{filename}"
